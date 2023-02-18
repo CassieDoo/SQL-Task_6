@@ -1,11 +1,7 @@
-import json
-import os
-from dotenv import load_dotenv
-
-import sqlalchemy
 import sqlalchemy as sq
-from sqlalchemy.orm import declarative_base, relationship, sessionmaker
-from sqlalchemy import or_
+from sqlalchemy.orm import declarative_base, relationship
+
+from database_connection import engine
 
 Base = declarative_base()
 
@@ -72,46 +68,9 @@ class Sale(Base):
         return f"{self.id}: ({self.price}, {self.date_sale}, {self.count})"
 
 
-load_dotenv()
-
-drivername = os.getenv("DRIVERNAME")
-username = os.getenv("USER")
-password = os.getenv("PASSWORD")
-host = os.getenv("HOST")
-port = os.getenv("PORT")
-database = os.getenv("DATABASE")
-
-DSN = f"{drivername}://{username}:{password}@{host}:{port}/{database}"
-engine = sqlalchemy.create_engine(DSN)
-
-
 def create_tables(engine):
     Base.metadata.create_all(engine)
 
 
-create_tables(engine)
-
-
-Session = sessionmaker(bind=engine)
-session = Session()
-
-with open('fixtures/tests_data.json', 'r', encoding='utf-8') as file:
-    data = json.load(file)
-    for record in data:
-        model = {
-            'publisher': Publisher,
-            'shop': Shop,
-            'book': Book,
-            'stock': Stock,
-            'sale': Sale,
-        }[record.get('model')]
-        session.add(model(id=record.get('pk'), **record.get('fields')))
-    session.commit()
-
-x = input("Введите имя или идентификатор издателя: ")
-susq1 = session.query(Publisher).filter(or_(Publisher.id == x, Publisher.name == x)).subquery()
-subq2 = session.query(Book).join(susq1, Book.id_publisher == susq1.c.id).subquery()
-subq3 = session.query(Stock).join(subq2, Stock.id_book == subq2.c.id).subquery()
-for c in session.query(Shop).join(subq3, Shop.id == subq3.c.id_shop).all():
-    print(c)
-session.close()
+if __name__ == "__main__":
+    create_tables(engine)
